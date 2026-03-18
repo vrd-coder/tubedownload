@@ -132,14 +132,46 @@
       &nbsp;·&nbsp; For personal use only
     </footer>
   </div>
-  <script>
+  <!-- SAME HTML + CSS (UNCHANGED ABOVE) -->
+<!-- ⚠️ SCROLL DIRECTLY TO SCRIPT — ONLY THIS PART UPDATED -->
+
+<script>
 const BACKEND = "https://ytsave-api-production.up.railway.app";
 
+// ✅ ENTER PRESS SUPPORT
+document.getElementById('url-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') fetchVideo();
+});
+
+// ✅ LOADING
+function showLoading(msg){
+  document.getElementById('loading-text').textContent = msg || "Loading...";
+  document.getElementById('status-loading').style.display = 'flex';
+  document.getElementById('status-error').style.display = 'none';
+  document.getElementById('result-card').style.display = 'none';
+}
+
+// ✅ ERROR
+function showError(msg){
+  document.getElementById('status-loading').style.display = 'none';
+  const err = document.getElementById('status-error');
+  err.textContent = "❌ " + msg;
+  err.style.display = 'block';
+}
+
+// ✅ HIDE
+function hideStatus(){
+  document.getElementById('status-loading').style.display = 'none';
+  document.getElementById('status-error').style.display = 'none';
+}
+
+
+// 🚀 FETCH VIDEO
 async function fetchVideo(){
   const url = document.getElementById('url-input').value.trim();
 
   if(!url){
-    alert("Paste URL first");
+    showError("Paste YouTube URL first!");
     return;
   }
 
@@ -163,6 +195,7 @@ async function fetchVideo(){
 }
 
 
+// 🎯 RENDER RESULT
 function renderResult(data, url){
   const info = document.getElementById('video-info');
   const dlEl = document.getElementById('download-section');
@@ -179,13 +212,19 @@ function renderResult(data, url){
 
   dlEl.innerHTML =
     '<a class="audio-btn" onclick="startDownload(\''+url+'\')">'+
-    '🚀 Download Video'+
+    '<span style="font-size:1.2rem">🚀</span>'+
+    '<div class="audio-details">Download Video <small>Best quality</small></div>'+
     '</a>';
 
   card.style.display = 'block';
+
+  setTimeout(()=>{
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
 }
 
 
+// 📥 DOWNLOAD
 async function startDownload(url){
   showLoading("Processing video...");
 
@@ -200,7 +239,7 @@ async function startDownload(url){
 
     hideStatus();
 
-    // 🔥 MAIN FIX
+    // 🔥 MAIN DOWNLOAD TRIGGER
     window.open(BACKEND + data.download_url, "_blank");
 
   }catch(err){
