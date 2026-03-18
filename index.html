@@ -211,9 +211,17 @@
           if(!f.url) continue;
           var q = f.quality || 'HD';
           var isHD = q.indexOf('720')>-1 || q.indexOf('1080')>-1 || q.indexOf('1440')>-1;
-          html += '<a class="dl-btn" href="'+f.url+'" target="_blank" rel="noopener">'+
+          var href, label;
+          if(f.needs_merge && f.video_url && f.audio_url){
+            var backend = 'https://ytsave-api-production.up.railway.app';
+            href = backend+'/merge?video_url='+encodeURIComponent(f.video_url)+'&audio_url='+encodeURIComponent(f.audio_url)+'&title='+encodeURIComponent(data.title||'video');
+          } else {
+            href = f.url || '';
+          }
+          if(!href) return;
+          html += '<a class="dl-btn" href="'+href+'" target="_blank" rel="noopener">'+
             '<div class="q-label">'+q+(isHD?'<span class="q-badge">HD</span>':'')+' <span style="font-size:0.7rem;color:var(--grey)">↓</span></div>'+
-            '<div class="q-sub">'+(f.ext||'mp4')+'</div>'+
+            '<div class="q-sub">'+(f.ext||'mp4')+(f.needs_merge?' · merged':'')+'</div>'+
           '</a>';
         }
         html += '</div>';
@@ -238,4 +246,5 @@
     }
   </script>
 </body>
-</html>
+  </html>
+  
