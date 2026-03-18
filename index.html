@@ -133,69 +133,79 @@
     </footer>
   </div>
   <script>
-const BACKEND = "https://ytsave-api-production.up.railway.app"; // apna URL daal
-
-document.getElementById('url-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') fetchVideo();
-});
-
-function showError(msg){
-  const err = document.getElementById('status-error');
-  err.textContent = '❌ ' + msg;
-  err.style.display = 'block';
-}
-
-function showLoading(){
-  document.getElementById('status-loading').style.display = 'flex';
-}
-
-function hideLoading(){
-  document.getElementById('status-loading').style.display = 'none';
-}
+const BACKEND = "https://ytsave-api-production.up.railway.app";
 
 async function fetchVideo(){
   const url = document.getElementById('url-input').value.trim();
-  if(!url) return showError("Paste URL first");
 
-  showLoading();
+  if(!url){
+    alert("Paste URL first");
+    return;
+  }
 
-  try {
+  showLoading("Fetching video...");
+
+  try{
     const res = await fetch(`${BACKEND}/info?url=${encodeURIComponent(url)}`);
     const data = await res.json();
 
-    if(data.error) throw new Error(data.error);
+    if(data.error){
+      showError(data.error);
+      return;
+    }
 
-    hideLoading();
+    hideStatus();
     renderResult(data, url);
 
-  } catch(err){
-    hideLoading();
-    showError(err.message);
+  }catch(err){
+    showError("Failed to fetch video");
   }
 }
 
+
 function renderResult(data, url){
-  const card = document.getElementById('result-card');
   const info = document.getElementById('video-info');
-  const dl = document.getElementById('download-section');
+  const dlEl = document.getElementById('download-section');
+  const card = document.getElementById('result-card');
 
-  info.innerHTML = `
-    <img class="video-thumb" src="${data.thumbnail}" />
-    <div class="video-details">
-      <div class="video-title">${data.title}</div>
-      <div class="video-meta">
-        <span class="meta-tag">${data.author || ''}</span>
-      </div>
-    </div>
-  `;
+  info.innerHTML =
+    '<img class="video-thumb" src="'+data.thumbnail+'"/>'+
+    '<div class="video-details">'+
+      '<div class="video-title">'+data.title+'</div>'+
+      '<div class="video-meta">'+
+        '<span class="meta-tag">'+(data.author||'')+'</span>'+
+      '</div>'+
+    '</div>';
 
-  dl.innerHTML = `
-    <a class="audio-btn" href="${BACKEND}/download?url=${encodeURIComponent(url)}" target="_blank">
-      🚀 Download Video (HD)
-    </a>
-  `;
+  dlEl.innerHTML =
+    '<a class="audio-btn" onclick="startDownload(\''+url+'\')">'+
+    '🚀 Download Video'+
+    '</a>';
 
   card.style.display = 'block';
+}
+
+
+async function startDownload(url){
+  showLoading("Processing video...");
+
+  try{
+    const res = await fetch(`${BACKEND}/download?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+
+    if(data.error){
+      showError(data.error);
+      return;
+    }
+
+    hideStatus();
+
+    // 🔥 MAIN FIX
+    window.open(BACKEND + data.download_url, "_blank");
+
+  }catch(err){
+    showError("Download failed");
+  }
 }
 </script>
 </body>
