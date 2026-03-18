@@ -109,18 +109,15 @@
         <div class="feature"><div class="feature-dot"></div>Shorts Supported</div>
       </div>
     </div>
-
     <div id="status-loading" class="status-box loading" style="display:none">
       <div class="loader"></div>
       <span id="loading-text">Fetching video…</span>
     </div>
     <div id="status-error" class="status-box error" style="display:none"></div>
-
     <div class="result-card" id="result-card">
       <div class="video-info" id="video-info"></div>
       <div class="download-section" id="download-section"></div>
     </div>
-
     <div class="how-section">
       <h2 class="how-title">How It Works</h2>
       <div class="steps">
@@ -135,11 +132,8 @@
       &nbsp;·&nbsp; For personal use only
     </footer>
   </div>
-
   <script>
-    document.getElementById('url-input').addEventListener('keydown', e => {
-      if(e.key==='Enter') fetchVideo();
-    });
+    document.getElementById('url-input').addEventListener('keydown',e=>{if(e.key==='Enter')fetchVideo()});
 
     function showLoading(msg){
       document.getElementById('loading-text').textContent=msg||'Fetching video…';
@@ -156,6 +150,12 @@
       document.getElementById('status-loading').style.display='none';
       document.getElementById('status-error').style.display='none';
     }
+    function fmtDur(s){
+      if(!s) return '';
+      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+      if(h>0) return h+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+      return m+':'+String(sec).padStart(2,'0');
+    }
 
     async function fetchVideo(){
       const url=document.getElementById('url-input').value.trim();
@@ -166,9 +166,8 @@
       const btn=document.getElementById('fetch-btn');
       btn.disabled=true; btn.textContent='Fetching…';
       showLoading('Fetching video details…');
-
       try{
-        const res=await fetch(`/api/fetch?url=${encodeURIComponent(url)}`);
+        const res=await fetch('/api/fetch?url='+encodeURIComponent(url));
         const data=await res.json();
         if(data.error) throw new Error(data.error);
         hideStatus();
@@ -185,75 +184,58 @@
       const info=document.getElementById('video-info');
       const dlEl=document.getElementById('download-section');
 
-      // Y2mate response: { title, thumbnail, links: { mp4: {...}, mp3: {...} } }
-      const title   = data.title || data.videoTitle || 'YouTube Video';
-      const thumb   = data.thumbnail || data.thumb || '';
-      const vidMatch= url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
-      const vidId   = vidMatch?vidMatch[1]:'';
-      const thumbUrl= thumb||(vidId?`https://img.youtube.com/vi/${vidId}/mqdefault.jpg`:'');
+      const title   = data.title    || 'YouTube Video';
+      const thumb   = data.thumbnail|| '';
+      const dur     = fmtDur(data.duration);
+      const author  = data.author   || '';
+      const formats = data.formats  || [];
+      const audioUrl= data.audio_url|| '';
 
-      info.innerHTML=`
-        <img class="video-thumb" src="${thumbUrl}" alt="thumb" onerror="this.style.display='none'"/>
-        <div class="video-details">
-          <div class="video-title">${title}</div>
-          <div class="video-meta">
-            <span class="meta-tag red">▶ YouTube</span>
-            <span class="meta-tag">HD Available</span>
-          </div>
-        </div>`;
+      info.innerHTML=
+        '<img class="video-thumb" src="'+thumb+'" alt="thumb" onerror="this.style.display=\'none\'"/>'+
+        '<div class="video-details">'+
+          '<div class="video-title">'+title+'</div>'+
+          '<div class="video-meta">'+
+            (author ? '<span class="meta-tag">'+author+'</span>' : '')+
+            (dur    ? '<span class="meta-tag red">⏱ '+dur+'</span>' : '')+
+          '</div>'+
+        '</div>';
 
-      let html='';
+      var html = '';
 
       // Video formats
-      const mp4=data.links?.mp4||data.mp4||{};
-      const mp4Keys=Object.keys(mp4);
-      if(mp4Keys.length>0){
-        html+=`<div class="section-label">Video Quality</div><div class="dl-grid">`;
-        mp4Keys.forEach(key=>{
-          const fmt=mp4[key];
-          const label=fmt.q||fmt.quality||key;
-          const dlUrl=fmt.url||fmt.link||'';
-          const size=fmt.size||'';
-          const isHD=label.includes('720')||label.includes('1080')||label.includes('4K');
-          if(dlUrl){
-            html+=`<a class="dl-btn" href="${dlUrl}" target="_blank" rel="noopener">
-              <div class="q-label">${label}${isHD?'<span class="q-badge">HD</span>':''}</div>
-              <div class="q-sub">${size?size+' · ':''}MP4</div>
-            </a>`;
-          }
-        });
-        html+=`</div>`;
-      }
-
-      // Audio formats
-      const mp3=data.links?.mp3||data.mp3||{};
-      const mp3Keys=Object.keys(mp3);
-      if(mp3Keys.length>0){
-        const key=mp3Keys[0];
-        const fmt=mp3[key];
-        const dlUrl=fmt.url||fmt.link||'';
-        const size=fmt.size||'';
-        if(dlUrl){
-          html+=`<div class="section-label">Audio Only</div>
-            <a class="audio-btn" href="${dlUrl}" target="_blank" rel="noopener">
-              <span style="font-size:1.2rem">🎵</span>
-              <div class="audio-details">Download MP3
-                <small>${size?size+' · ':''}Audio only</small>
-              </div>
-            </a>`;
+      if(formats.length > 0){
+        html += '<div class="section-label">Video Quality</div><div class="dl-grid">';
+        for(var i=0; i<formats.length; i++){
+          var f = formats[i];
+          if(!f.url) continue;
+          var q = f.quality || 'HD';
+          var isHD = q.indexOf('720')>-1 || q.indexOf('1080')>-1 || q.indexOf('1440')>-1;
+          html += '<a class="dl-btn" href="'+f.url+'" target="_blank" rel="noopener">'+
+            '<div class="q-label">'+q+(isHD?'<span class="q-badge">HD</span>':'')+' <span style="font-size:0.7rem;color:var(--grey)">↓</span></div>'+
+            '<div class="q-sub">'+(f.ext||'mp4')+'</div>'+
+          '</a>';
         }
+        html += '</div>';
       }
 
-      if(!html){
-        html=`<p style="color:var(--grey);text-align:center;padding:1rem;font-size:0.88rem">
-          ⚠️ No download links found. Try a different video.</p>`;
+      // Audio
+      if(audioUrl){
+        html += '<div class="section-label">Audio Only</div>'+
+          '<a class="audio-btn" href="'+audioUrl+'" target="_blank" rel="noopener">'+
+            '<span style="font-size:1.2rem">🎵</span>'+
+            '<div class="audio-details">Download Audio <small>Best quality</small></div>'+
+          '</a>';
       }
 
-      dlEl.innerHTML=html;
-      card.style.display='block';
-      setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+      if(!formats.length && !audioUrl){
+        html = '<p style="color:var(--grey);text-align:center;padding:1rem;font-size:0.88rem">⚠️ No download links found. Try a different video.</p>';
+      }
+
+      dlEl.innerHTML = html;
+      card.style.display = 'block';
+      setTimeout(function(){ card.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 100);
     }
   </script>
 </body>
-  </html>
-  
+</html>
