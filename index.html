@@ -133,118 +133,71 @@
     </footer>
   </div>
   <script>
-    document.getElementById('url-input').addEventListener('keydown',e=>{if(e.key==='Enter')fetchVideo()});
+const BACKEND = "https://ytsave-api-production.up.railway.app"; // apna URL daal
 
-    function showLoading(msg){
-      document.getElementById('loading-text').textContent=msg||'Fetching video…';
-      document.getElementById('status-loading').style.display='flex';
-      document.getElementById('status-error').style.display='none';
-      document.getElementById('result-card').style.display='none';
-    }
-    function showError(msg){
-      document.getElementById('status-loading').style.display='none';
-      document.getElementById('status-error').textContent='❌ '+msg;
-      document.getElementById('status-error').style.display='block';
-    }
-    function hideStatus(){
-      document.getElementById('status-loading').style.display='none';
-      document.getElementById('status-error').style.display='none';
-    }
-    function fmtDur(s){
-      if(!s) return '';
-      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
-      if(h>0) return h+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-      return m+':'+String(sec).padStart(2,'0');
-    }
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fetchVideo();
+});
 
-    async function fetchVideo(){
-      const url=document.getElementById('url-input').value.trim();
-      if(!url){showError('Please paste a YouTube URL first!');return;}
-      if(!url.includes('youtube.com')&&!url.includes('youtu.be')){
-        showError('Please enter a valid YouTube URL');return;
-      }
-      const btn=document.getElementById('fetch-btn');
-      btn.disabled=true; btn.textContent='Fetching…';
-      showLoading('Fetching video details…');
-      try{
-        const res=await fetch('/api/fetch?url='+encodeURIComponent(url));
-        const data=await res.json();
-        if(data.error) throw new Error(data.error);
-        hideStatus();
-        renderResult(data, url);
-      }catch(err){
-        showError(err.message||'Something went wrong. Please try again.');
-      }finally{
-        btn.disabled=false; btn.textContent='Fetch Video';
-      }
-    }
+function showError(msg){
+  const err = document.getElementById('status-error');
+  err.textContent = '❌ ' + msg;
+  err.style.display = 'block';
+}
 
-    function renderResult(data, url){
-      const card=document.getElementById('result-card');
-      const info=document.getElementById('video-info');
-      const dlEl=document.getElementById('download-section');
+function showLoading(){
+  document.getElementById('status-loading').style.display = 'flex';
+}
 
-      const title   = data.title    || 'YouTube Video';
-      const thumb   = data.thumbnail|| '';
-      const dur     = fmtDur(data.duration);
-      const author  = data.author   || '';
-      const formats = data.formats  || [];
-      const audioUrl= data.audio_url|| '';
+function hideLoading(){
+  document.getElementById('status-loading').style.display = 'none';
+}
 
-      info.innerHTML=
-        '<img class="video-thumb" src="'+thumb+'" alt="thumb" onerror="this.style.display=\'none\'"/>'+
-        '<div class="video-details">'+
-          '<div class="video-title">'+title+'</div>'+
-          '<div class="video-meta">'+
-            (author ? '<span class="meta-tag">'+author+'</span>' : '')+
-            (dur    ? '<span class="meta-tag red">⏱ '+dur+'</span>' : '')+
-          '</div>'+
-        '</div>';
+async function fetchVideo(){
+  const url = document.getElementById('url-input').value.trim();
+  if(!url) return showError("Paste URL first");
 
-      var html = '';
+  showLoading();
 
-      // Video formats
-      if(formats.length > 0){
-        html += '<div class="section-label">Video Quality</div><div class="dl-grid">';
-        for(var i=0; i<formats.length; i++){
-          var f = formats[i];
-          if(!f.url) continue;
-          var q = f.quality || 'HD';
-          var isHD = q.indexOf('720')>-1 || q.indexOf('1080')>-1 || q.indexOf('1440')>-1;
-          var href, label;
-          if(f.needs_merge && f.video_url && f.audio_url){
-            var backend = 'https://ytsave-api-production.up.railway.app';
-            href = backend+'/merge?video_url='+encodeURIComponent(f.video_url)+'&audio_url='+encodeURIComponent(f.audio_url)+'&title='+encodeURIComponent(data.title||'video');
-          } else {
-            href = f.url || '';
-          }
-          if(!href) return;
-          html += '<a class="dl-btn" href="'+href+'" target="_blank" rel="noopener">'+
-            '<div class="q-label">'+q+(isHD?'<span class="q-badge">HD</span>':'')+' <span style="font-size:0.7rem;color:var(--grey)">↓</span></div>'+
-            '<div class="q-sub">'+(f.ext||'mp4')+(f.needs_merge?' · merged':'')+'</div>'+
-          '</a>';
-        }
-        html += '</div>';
-      }
+  try {
+    const res = await fetch(`${BACKEND}/info?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
 
-      // Audio
-      if(audioUrl){
-        html += '<div class="section-label">Audio Only</div>'+
-          '<a class="audio-btn" href="'+audioUrl+'" target="_blank" rel="noopener">'+
-            '<span style="font-size:1.2rem">🎵</span>'+
-            '<div class="audio-details">Download Audio <small>Best quality</small></div>'+
-          '</a>';
-      }
+    if(data.error) throw new Error(data.error);
 
-      if(!formats.length && !audioUrl){
-        html = '<p style="color:var(--grey);text-align:center;padding:1rem;font-size:0.88rem">⚠️ No download links found. Try a different video.</p>';
-      }
+    hideLoading();
+    renderResult(data, url);
 
-      dlEl.innerHTML = html;
-      card.style.display = 'block';
-      setTimeout(function(){ card.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 100);
-    }
-  </script>
+  } catch(err){
+    hideLoading();
+    showError(err.message);
+  }
+}
+
+function renderResult(data, url){
+  const card = document.getElementById('result-card');
+  const info = document.getElementById('video-info');
+  const dl = document.getElementById('download-section');
+
+  info.innerHTML = `
+    <img class="video-thumb" src="${data.thumbnail}" />
+    <div class="video-details">
+      <div class="video-title">${data.title}</div>
+      <div class="video-meta">
+        <span class="meta-tag">${data.author || ''}</span>
+      </div>
+    </div>
+  `;
+
+  dl.innerHTML = `
+    <a class="audio-btn" href="${BACKEND}/download?url=${encodeURIComponent(url)}" target="_blank">
+      🚀 Download Video (HD)
+    </a>
+  `;
+
+  card.style.display = 'block';
+}
+</script>
 </body>
   </html>
   
