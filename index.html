@@ -177,7 +177,6 @@ async function fetchVideo(){
   renderResult(data, url);
 }
 
-
 function renderResult(data, url){
   const info = document.getElementById('video-info');
   const dlEl = document.getElementById('download-section');
@@ -192,33 +191,25 @@ function renderResult(data, url){
       '</div>'+
     '</div>';
 
-  let buttons = "";
-
-  data.formats.forEach(f => {
-    buttons += `
-      <a class="dl-btn" onclick="startDownload('${url}','${f.height}')">
-        <div class="q-label">${f.quality}</div>
-        <div class="q-sub">HD Download</div>
-      </a>
-    `;
-  });
-
   dlEl.innerHTML = `
-    <div class="section-label">Video Quality</div>
-    <div class="dl-grid">${buttons}</div>
+    <a class="audio-btn" onclick="startDownload('${url}')">
+      🚀 Download Video
+    </a>
   `;
 
   card.style.display = 'block';
 }
 
+async function startDownload(url){
+  showLoading("Processing...");
 
-async function startDownload(url, quality){
-  showLoading("Processing " + quality + "...");
-
-  const res = await fetch(`${BACKEND}/download?url=${encodeURIComponent(url)}&quality=${quality}`);
+  const res = await fetch(`${BACKEND}/download?url=${encodeURIComponent(url)}`);
   const data = await res.json();
 
-  if(data.error) return showError(data.error);
+  if(data.error){
+    showError(data.error);
+    return;
+  }
 
   hideStatus();
   window.open(BACKEND + data.download_url, "_blank");
